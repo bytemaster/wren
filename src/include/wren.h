@@ -211,6 +211,11 @@ typedef struct
   // User-defined data associated with the VM.
   void* userData;
 
+#if WREN_SANDBOX
+  int64_t maxRunOps;
+  int64_t maxHeapSize;
+#endif
+
 } WrenConfiguration;
 
 typedef enum
