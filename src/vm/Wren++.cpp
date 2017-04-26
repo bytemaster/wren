@@ -48,8 +48,8 @@ void writeFnWrapper(WrenVM* vm, const char* text) {
     wrenpp::VM::writeFn(vm, text);
 }
 
-void errorFnWrapper(WrenErrorType type, const char* module, int line, const char* message) {
-    wrenpp::VM::errorFn(type, module, line, message);
+void errorFnWrapper(WrenVM* vm, WrenErrorType type, const char* module, int line, const char* message) {
+    wrenpp::VM::errorFn(vm, type, module, line, message);
 }
 
 void* reallocateFnWrapper(void* memory, std::size_t newSize) {
@@ -240,7 +240,7 @@ WriteFn VM::writeFn = [](WrenVM* vm, const char* text) -> void {
     fflush(stdout);
 };
 
-ErrorFn VM::errorFn = [](WrenErrorType type, const char* module, int line, const char* message) -> void {
+ErrorFn VM::errorFn = [](WrenVM*, WrenErrorType type, const char* module, int line, const char* message) -> void {
     const char* typeStr = errorTypeToString(type);
     printf("%s in %s:%i > %s\n", typeStr, module, line, message);
     fflush(stdout);
