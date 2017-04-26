@@ -280,8 +280,10 @@ VM::VM(VM&& other )
 }
 
 VM& VM::operator=(VM&& rhs ) {
-    vm_             = rhs.vm_;
-    rhs.vm_         = nullptr;
+    if (&rhs != this) {
+        vm_     = rhs.vm_;
+        rhs.vm_ = nullptr;
+    }
     return *this;
 }
 
