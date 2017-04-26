@@ -143,25 +143,29 @@ Method::~Method() {
 }
 
 Method& Method::operator=(const Method& rhs) {
-    release_();
-    vm_ = rhs.vm_;
-    method_ = rhs.method_;
-    variable_ = rhs.variable_;
-    refCount_ = rhs.refCount_;
-    retain_();
+    if (&rhs != this) {
+        release_();
+        vm_ = rhs.vm_;
+        method_ = rhs.method_;
+        variable_ = rhs.variable_;
+        refCount_ = rhs.refCount_;
+        retain_();
+    }
     return *this;
 }
 
 Method& Method::operator=(Method&& rhs) {
-    release_();
-    vm_ = rhs.vm_;
-    method_ = rhs.method_;
-    variable_ = rhs.variable_;
-    refCount_ = rhs.refCount_;
-    rhs.vm_ = nullptr;
-    rhs.method_ = nullptr;
-    rhs.variable_ = nullptr;
-    rhs.refCount_ = nullptr;
+    if (&rhs != this) {
+        release_();
+        vm_ = rhs.vm_;
+        method_ = rhs.method_;
+        variable_ = rhs.variable_;
+        refCount_ = rhs.refCount_;
+        rhs.vm_ = nullptr;
+        rhs.method_ = nullptr;
+        rhs.variable_ = nullptr;
+        rhs.refCount_ = nullptr;
+    }
     return *this;
 }
 
