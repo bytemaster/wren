@@ -381,8 +381,8 @@ static void bindMethod(WrenVM* vm, int methodType, int symbol,
 static void callForeign(WrenVM* vm, ObjFiber* fiber,
                         WrenForeignMethodFn foreign, int numArgs)
 {
-  // Save the current state so we can restore it when done.
-  Value* apiStack = vm->apiStack;
+  // Save the current state so we can restore it when done
+  Value* oldApiStack = vm->apiStack;
   vm->apiStack = fiber->stackTop - numArgs;
 
   foreign(vm);
@@ -390,7 +390,8 @@ static void callForeign(WrenVM* vm, ObjFiber* fiber,
   // Discard the stack slots for the arguments and temporaries but leave one
   // for the result.
   fiber->stackTop = vm->apiStack + 1;
-  vm->apiStack = apiStack;
+  // Restore apiStack to value prior to calling foreign method
+  vm->apiStack = oldApiStack;
 }
 
 // Handles the current fiber having aborted because of an error. Switches to
