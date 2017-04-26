@@ -48,8 +48,8 @@ void writeFnWrapper(WrenVM* vm, const char* text) {
     wrenpp::VM::writeFn(vm, text);
 }
 
-void errorFnWrapper(WrenErrorType type, const char* module, int line, const char* message) {
-    wrenpp::VM::errorFn(type, module, line, message);
+void errorFnWrapper(WrenVM* vm, WrenErrorType type, const char* module, int line, const char* message) {
+    wrenpp::VM::errorFn(vm, type, module, line, message);
 }
 
 void* reallocateFnWrapper(void* memory, std::size_t newSize) {
@@ -143,25 +143,29 @@ Method::~Method() {
 }
 
 Method& Method::operator=(const Method& rhs) {
-    release_();
-    vm_ = rhs.vm_;
-    method_ = rhs.method_;
-    variable_ = rhs.variable_;
-    refCount_ = rhs.refCount_;
-    retain_();
+    if (&rhs != this) {
+        release_();
+        vm_ = rhs.vm_;
+        method_ = rhs.method_;
+        variable_ = rhs.variable_;
+        refCount_ = rhs.refCount_;
+        retain_();
+    }
     return *this;
 }
 
 Method& Method::operator=(Method&& rhs) {
-    release_();
-    vm_ = rhs.vm_;
-    method_ = rhs.method_;
-    variable_ = rhs.variable_;
-    refCount_ = rhs.refCount_;
-    rhs.vm_ = nullptr;
-    rhs.method_ = nullptr;
-    rhs.variable_ = nullptr;
-    rhs.refCount_ = nullptr;
+    if (&rhs != this) {
+        release_();
+        vm_ = rhs.vm_;
+        method_ = rhs.method_;
+        variable_ = rhs.variable_;
+        refCount_ = rhs.refCount_;
+        rhs.vm_ = nullptr;
+        rhs.method_ = nullptr;
+        rhs.variable_ = nullptr;
+        rhs.refCount_ = nullptr;
+    }
     return *this;
 }
 
@@ -236,7 +240,7 @@ WriteFn VM::writeFn = [](WrenVM* vm, const char* text) -> void {
     fflush(stdout);
 };
 
-ErrorFn VM::errorFn = [](WrenErrorType type, const char* module, int line, const char* message) -> void {
+ErrorFn VM::errorFn = [](WrenVM*, WrenErrorType type, const char* module, int line, const char* message) -> void {
     const char* typeStr = errorTypeToString(type);
     printf("%s in %s:%i > %s\n", typeStr, module, line, message);
     fflush(stdout);

@@ -403,14 +403,11 @@ static void printError(Parser* parser, int line, const char* label,
   length += vsprintf(message + length, format, args);
   ASSERT(length < ERROR_MESSAGE_SIZE, "Error should not exceed buffer.");
   
-  parser->vm->config.errorFn(WREN_ERROR_COMPILE,
+  parser->vm->config.errorFn(parser->vm, WREN_ERROR_COMPILE,
                              parser->module->name->value, line, message);
 }
 
-// Outputs a compile or syntax error. This also marks the compilation as having
-// an error, which ensures that the resulting code will be discarded and never
-// run. This means that after calling lexError(), it's fine to generate whatever
-// invalid bytecode you want since it won't be used.
+// Outputs a lexical error.
 static void lexError(Parser* parser, const char* format, ...)
 {
   va_list args;
@@ -712,16 +709,23 @@ static void makeNumber(Parser* parser, bool isHex)
 {
   errno = 0;
 
-  // We don't check that the entire token is consumed because we've already
-  // scanned it ourselves and know it's valid.
-  parser->current.value = NUM_VAL(isHex ? strtol(parser->tokenStart, NULL, 16)
-                                        : strtod(parser->tokenStart, NULL));
+  if (isHex)
+  {
+    parser->current.value = NUM_VAL(strtoll(parser->tokenStart, NULL, 16));
+  }
+  else
+  {
+    parser->current.value = NUM_VAL(strtod(parser->tokenStart, NULL));
+  }
   
   if (errno == ERANGE)
   {
-    lexError(parser, "Number literal was too large.");
+    lexError(parser, "Number literal was too large (%d).", sizeof(long int));
     parser->current.value = NUM_VAL(0);
   }
+  
+  // We don't check that the entire token is consumed after calling strtoll()
+  // or strtod() because we've already scanned it ourselves and know it's valid.
 
   makeToken(parser, TOKEN_NUMBER);
 }
@@ -1067,7 +1071,20 @@ static void nextToken(Parser* parser)
         }
         else
         {
-          lexError(parser, "Invalid character '%c'.", c);
+          if (c >= 32 && c <= 126)
+          {
+            lexError(parser, "Invalid character '%c'.", c);
+          }
+          else
+          {
+            // Don't show non-ASCII values since we didn't UTF-8 decode the
+            // bytes. Since there are no non-ASCII byte values that are
+            // meaningful code units in Wren, the lexer works on raw bytes,
+            // even though the source code and console output are UTF-8.
+            lexError(parser, "Invalid byte 0x%x.", (uint8_t)c);
+          }
+          parser->current.type = TOKEN_ERROR;
+          parser->current.length = 0;
         }
         return;
     }

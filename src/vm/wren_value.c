@@ -739,12 +739,21 @@ Value wrenNewStringFromRange(WrenVM* vm, ObjString* source, int start,
 
 Value wrenNumToString(WrenVM* vm, double value)
 {
-  // Corner case: If the value is NaN, different versions of libc produce
-  // different outputs (some will format it signed and some won't). To get
-  // reliable output, handle that ourselves.
-  if (value != value) return CONST_STRING(vm, "nan");
-  if (value == INFINITY) return CONST_STRING(vm, "infinity");
-  if (value == -INFINITY) return CONST_STRING(vm, "-infinity");
+  // Edge case: If the value is NaN or infinity, different versions of libc
+  // produce different outputs (some will format it signed and some won't). To
+  // get reliable output, handle it ourselves.
+  if (isnan(value)) return CONST_STRING(vm, "nan");
+  if (isinf(value))
+  {
+    if (value > 0.0)
+    {
+      return CONST_STRING(vm, "infinity");
+    }
+    else
+    {
+      return CONST_STRING(vm, "-infinity");
+    }
+  }
 
   // This is large enough to hold any double converted to a string using
   // "%.14g". Example:

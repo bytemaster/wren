@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import sys
 
-LIB_UV_VERSION = "v1.8.0"
+LIB_UV_VERSION = "v1.10.0"
 LIB_UV_DIR = "deps/libuv"
 
 def python2_binary():
@@ -113,8 +113,13 @@ def build_libuv_linux(arch):
   run(["make", "-C", "out", "BUILDTYPE=Release"], cwd=LIB_UV_DIR)
 
 
-def build_libuv_windows():
-  run(["cmd", "/c", "vcbuild.bat", "release"], cwd=LIB_UV_DIR)
+def build_libuv_windows(arch):
+  args = ["cmd", "/c", "vcbuild.bat", "release"]
+  if arch == "-32":
+    args.append("x86")
+  elif arch == "-64":
+    args.append("x64")
+  run(args, cwd=LIB_UV_DIR)
 
 
 def build_libuv(arch, out):
@@ -123,7 +128,7 @@ def build_libuv(arch, out):
   elif platform.system() == "Linux":
     build_libuv_linux(arch)
   elif platform.system() == "Windows":
-    build_libuv_windows()
+    build_libuv_windows(arch)
   else:
     print("Unsupported platform: " + platform.system())
     sys.exit(1)

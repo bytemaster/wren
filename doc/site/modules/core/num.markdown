@@ -89,6 +89,14 @@ Whether the number is [not a number](http://en.wikipedia.org/wiki/NaN). This is
 `false` for normal number values and infinities, and `true` for the result of
 `0/0`, the square root of a negative number, etc.
 
+### **log**
+
+The natural logarithm of the number.
+
+### **pow**(power)
+
+Raises this number (the base) to `power`. Returns `nan` if the base is negative.
+
 ### **sin**
 
 The sine of the number.
@@ -144,7 +152,7 @@ It is a runtime error if `other` is not a number.
 
 Performs bitwise or on the number. Both numbers are first converted to 32-bit
 unsigned values. The result is then a 32-bit unsigned number where each bit is
-`true` only where the corresponding bits of both inputs were `true`.
+`true` only where the corresponding bits of one or both inputs were `true`.
 
 It is a runtime error if `other` is not a number.
 
