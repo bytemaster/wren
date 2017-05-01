@@ -76,10 +76,10 @@ typedef enum
 {
   // A syntax or resolution error detected at compile time.
   WREN_ERROR_COMPILE,
-  
+
   // The error message for a runtime error.
   WREN_ERROR_RUNTIME,
-  
+
   // One entry of a runtime error's stack trace.
   WREN_ERROR_STACK_TRACE
 } WrenErrorType;
@@ -96,7 +96,8 @@ typedef enum
 // Each of those has the module and line where the method or function is
 // defined and [message] is the name of the method or function.
 typedef void (*WrenErrorFn)(
-    WrenErrorType type, const char* module, int line, const char* message);
+    WrenVM* vm, WrenErrorType type, const char* module, int line,
+    const char* message);
 
 typedef struct
 {
@@ -128,7 +129,7 @@ typedef struct
   // The callback Wren uses to load a module.
   //
   // Since Wren does not talk directly to the file system, it relies on the
-  // embedder to phyisically locate and read the source code for a module. The
+  // embedder to physically locate and read the source code for a module. The
   // first time an import appears, Wren will call this and pass in the name of
   // the module being imported. The VM should return the soure code for that
   // module. Memory for the source should be allocated using [reallocateFn] and
@@ -166,7 +167,7 @@ typedef struct
   //
   // If this is `NULL`, Wren discards any printed text.
   WrenWriteFn writeFn;
-  
+
   // The callback Wren uses to report errors.
   //
   // When an error occurs, this will be called with the module name, line
@@ -198,7 +199,7 @@ typedef struct
   // percentage of the current heap size.
   //
   // For example, say that this is 50. After a garbage collection, when there
-  // are 400 bytes of memory still in use, the next collection will be triggered 
+  // are 400 bytes of memory still in use, the next collection will be triggered
   // after a total of 600 bytes are allocated (including the 400 already in use.)
   //
   // Setting this to a smaller number wastes less memory, but triggers more
@@ -206,6 +207,9 @@ typedef struct
   //
   // If zero, defaults to 50.
   int heapGrowthPercent;
+
+  // User-defined data associated with the VM.
+  void* userData;
 
 #if WREN_SANDBOX
   int64_t maxRunOps;
@@ -233,7 +237,7 @@ typedef enum
   WREN_TYPE_LIST,
   WREN_TYPE_NULL,
   WREN_TYPE_STRING,
-  
+
   // The object is of a type that isn't accessible by the C API.
   WREN_TYPE_UNKNOWN
 } WrenType;
@@ -452,5 +456,11 @@ void wrenGetVariable(WrenVM* vm, const char* module, const char* name,
 // Sets the current fiber to be aborted, and uses the value in [slot] as the
 // runtime error object.
 void wrenAbortFiber(WrenVM* vm, int slot);
+
+// Returns the user data associated with the WrenVM.
+void* wrenGetUserData(WrenVM* vm);
+
+// Sets user data associated with the WrenVM.
+void wrenSetUserData(WrenVM* vm, void* userData);
 
 #endif

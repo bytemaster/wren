@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+from argparse import ArgumentParser
 from collections import defaultdict
 from os import listdir
 from os.path import abspath, basename, dirname, isdir, isfile, join, realpath, relpath, splitext
@@ -11,14 +12,25 @@ import sys
 from threading import Timer
 
 # Runs the tests.
+
+parser = ArgumentParser()
+parser.add_argument('--suffix', default='d')
+parser.add_argument('suite', nargs='?')
+
+args = parser.parse_args(sys.argv[1:])
+
+config = args.suffix.lstrip('d')
+is_debug = args.suffix.startswith('d')
+config_dir = ("debug" if is_debug else "release") + config
+
 WREN_DIR = dirname(dirname(realpath(__file__)))
-WREN_APP = join(WREN_DIR, 'bin', 'wrend')
-TEST_APP = join(WREN_DIR, 'build', 'debug', 'test', 'wrend')
+WREN_APP = join(WREN_DIR, 'bin', 'wren' + args.suffix)
+TEST_APP = join(WREN_DIR, 'build', config_dir, 'test', 'wren' + args.suffix)
 
 EXPECT_PATTERN = re.compile(r'// expect: ?(.*)')
 EXPECT_ERROR_PATTERN = re.compile(r'// expect error(?! line)')
 EXPECT_ERROR_LINE_PATTERN = re.compile(r'// expect error line (\d+)')
-EXPECT_RUNTIME_ERROR_PATTERN = re.compile(r'// expect runtime error: (.+)')
+EXPECT_RUNTIME_ERROR_PATTERN = re.compile(r'// expect (handled )?runtime error: (.+)')
 ERROR_PATTERN = re.compile(r'\[.* line (\d+)\] Error')
 STACK_TRACE_PATTERN = re.compile(r'\[main line (\d+)\] in')
 STDIN_PATTERN = re.compile(r'// stdin: (.*)')
@@ -77,9 +89,10 @@ class Test:
         match = EXPECT_RUNTIME_ERROR_PATTERN.search(line)
         if match:
           self.runtime_error_line = line_num
-          self.runtime_error_message = match.group(1)
-          # If we expect a runtime error, it should exit with EX_SOFTWARE.
-          self.exit_code = 70
+          self.runtime_error_message = match.group(2)
+          # If the runtime error isn't handled, it should exit with EX_SOFTWARE.
+          if match.group(1) != "handled ":
+            self.exit_code = 70
           expectations += 1
 
         match = STDIN_PATTERN.search(line)
@@ -113,7 +126,7 @@ class Test:
     test_arg = self.path
     proc = Popen([app, test_arg], stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
-    # If a test takes longer than two seconds, kill it.
+    # If a test takes longer than five seconds, kill it.
     #
     # This is mainly useful for running the tests while stress testing the GC,
     # which can make a few pathological tests much slower.
@@ -122,7 +135,7 @@ class Test:
       timed_out[0] = True
       p.kill()
 
-    timer = Timer(2, kill_process, [proc])
+    timer = Timer(5, kill_process, [proc])
 
     try:
       timer.start()
@@ -312,15 +325,14 @@ def run_script(app, path, type):
     return
 
   # Check if we are just running a subset of the tests.
-  if len(sys.argv) == 2:
+  if args.suite:
     this_test = relpath(path, join(WREN_DIR, 'test'))
-    if not this_test.startswith(sys.argv[1]):
+    if not this_test.startswith(args.suite):
       return
 
   # Update the status line.
-  print_line('Passed: ' + green(passed) +
-             ' Failed: ' + red(failed) +
-             ' Skipped: ' + yellow(num_skipped))
+  print_line('({}) Passed: {} Failed: {} Skipped: {} '.format(
+      relpath(app, WREN_DIR), green(passed), red(failed), yellow(num_skipped)))
 
   # Make a nice short path relative to the working directory.
 

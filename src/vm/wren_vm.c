@@ -46,6 +46,7 @@ void wrenInitConfiguration(WrenConfiguration* config)
   config->initialHeapSize = 1024 * 1024 * 10;
   config->minHeapSize = 1024 * 1024;
   config->heapGrowthPercent = 50;
+  config->userData = NULL;
 
 #if WREN_SANDBOX
   config->maxRunOps = WREN_DEFAULT_MAX_RUN_OPS;
@@ -91,7 +92,7 @@ WrenVM* wrenNewVM(WrenConfiguration* config)
 void wrenFreeVM(WrenVM* vm)
 {
   ASSERT(vm->methodNames.count > 0, "VM appears to have already been freed.");
-
+  
   // Free all of the GC objects.
   Obj* obj = vm->first;
   while (obj != NULL)
@@ -181,10 +182,9 @@ void wrenCollectGarbage(WrenVM* vm)
     }
   }
 
-  // +100 here because the configuration gives us the *additional* size of
-  // the heap relative to the in-use memory, while heapScalePercent is the
-  // *total* size of the heap relative to in-use.
-  vm->nextGC = vm->bytesAllocated * (100 + vm->config.heapGrowthPercent) / 100;
+  // Calculate the next gc point, this is the current allocation plus
+  // a configured percentage of the current allocation.
+  vm->nextGC = vm->bytesAllocated + ((vm->bytesAllocated * vm->config.heapGrowthPercent) / 100);
   if (vm->nextGC < vm->config.minHeapSize) vm->nextGC = vm->config.minHeapSize;
 
 #if WREN_DEBUG_TRACE_MEMORY || WREN_DEBUG_TRACE_GC
@@ -381,7 +381,8 @@ static void bindMethod(WrenVM* vm, int methodType, int symbol,
 static void callForeign(WrenVM* vm, ObjFiber* fiber,
                         WrenForeignMethodFn foreign, int numArgs)
 {
-  Value* oldApiStack = vm->apiStack; /// save the current state so we can restore it when done
+  // Save the current state so we can restore it when done
+  Value* oldApiStack = vm->apiStack;
   vm->apiStack = fiber->stackTop - numArgs;
 
   foreign(vm);
@@ -389,7 +390,8 @@ static void callForeign(WrenVM* vm, ObjFiber* fiber,
   // Discard the stack slots for the arguments and temporaries but leave one
   // for the result.
   fiber->stackTop = vm->apiStack + 1;
-  vm->apiStack = oldApiStack; /// restore apiStack to value prior to calling foreign method
+  // Restore apiStack to value prior to calling foreign method
+  vm->apiStack = oldApiStack;
 }
 
 // Handles the current fiber having aborted because of an error. Switches to
@@ -416,6 +418,7 @@ static void runtimeError(WrenVM* vm)
   // If we got here, nothing caught the error, so show the stack trace.
   wrenDebugPrintStackTrace(vm);
   vm->fiber = NULL;
+  vm->apiStack = NULL;
 }
 
 // Aborts the current fiber with an appropriate method not found error for a
@@ -1408,6 +1411,7 @@ Value wrenImportModule(WrenVM* vm, Value name)
   if (!IS_UNDEFINED(wrenMapGet(vm->modules, name))) return NULL_VAL;
 
   const char* source = NULL;
+  bool allocatedSource = true;
 
   // Let the host try to provide the module.
   if (vm->config.loadModuleFn != NULL)
@@ -1425,6 +1429,10 @@ Value wrenImportModule(WrenVM* vm, Value name)
 #if WREN_OPT_RANDOM
     if (strcmp(nameString->value, "random") == 0) source = wrenRandomSource();
 #endif
+    
+    // TODO: Should we give the host the ability to provide strings that don't
+    // need to be freed?
+    allocatedSource = false;
   }
   
   if (source == NULL)
@@ -1434,6 +1442,12 @@ Value wrenImportModule(WrenVM* vm, Value name)
   }
   
   ObjFiber* moduleFiber = loadModule(vm, name, source);
+  
+  // Modules loaded by the host are expected to be dynamically allocated with
+  // ownership given to the VM, which will free it. The built in optional
+  // modules are constant strings which don't need to be freed.
+  if (allocatedSource) DEALLOCATE(vm, (char*)source);
+  
   if (moduleFiber == NULL)
   {
     vm->fiber->error = wrenStringFormat(vm,
@@ -1757,4 +1771,14 @@ void wrenAbortFiber(WrenVM* vm, int slot)
 {
   validateApiSlot(vm, slot);
   vm->fiber->error = vm->apiStack[slot];
+}
+
+void* wrenGetUserData(WrenVM* vm)
+{
+	return vm->config.userData;
+}
+
+void wrenSetUserData(WrenVM* vm, void* userData)
+{
+	vm->config.userData = userData;
 }

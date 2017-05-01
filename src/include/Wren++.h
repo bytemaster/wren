@@ -27,7 +27,7 @@ using FunctionPtr   = WrenForeignMethodFn;
 using LoadModuleFn  = std::function< char*( const char* ) >;
 using WriteFn       = std::function< void( WrenVM*, const char* ) >;
 using ReallocateFn  = std::function<void*(void*, std::size_t)>;
-using ErrorFn       = std::function<void(WrenErrorType, const char*, int, const char*)>;
+using ErrorFn       = std::function<void(WrenVM*, WrenErrorType, const char*, int, const char*)>;
 
 namespace detail {
 

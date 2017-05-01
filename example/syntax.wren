@@ -129,6 +129,7 @@ class Literals is SyntaxExample {
     3.14159
     1.0
     -12.34
+    0x1000000
     0xdeadbeef
     0x1234567890ABCDEF
   }
