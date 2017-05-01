@@ -788,6 +788,8 @@ class ModuleContext {
 
         template< typename T, typename... Args >
         RegisteredClassContext<T> bindClass( std::string className );
+        template< typename T, typename... Args >
+        RegisteredClassContext<T> bindClassReference( std::string className );
 
         void endModule();
 
@@ -917,6 +919,21 @@ Value Method::operator()( Args... args ) const {
 template< typename T, typename... Args >
 RegisteredClassContext<T> ModuleContext::bindClass( std::string className ) {
     WrenForeignClassMethods wrapper{ &detail::allocate< T, Args... >, &detail::finalize< T > };
+    detail::registerClass( name_, className, wrapper );
+    // store the name and module
+    assert(detail::classNameStorage().size() == detail::getTypeId<T>());
+    assert(detail::moduleNameStorage().size() == detail::getTypeId<T>());
+    detail::bindTypeToModuleName<T>(name_);
+    detail::bindTypeToClassName<T>(className);
+    return RegisteredClassContext<T>( className, this );
+}
+
+/**
+ *  This is used for binding classes that cannot be constructored
+ */
+template< typename T, typename... Args >
+RegisteredClassContext<T> ModuleContext::bindClassReference( std::string className ) {
+    WrenForeignClassMethods wrapper{};
     detail::registerClass( name_, className, wrapper );
     // store the name and module
     assert(detail::classNameStorage().size() == detail::getTypeId<T>());

@@ -426,6 +426,13 @@ static void methodNotFound(WrenVM* vm, ObjClass* classObj, int symbol)
       OBJ_VAL(classObj->name), vm->methodNames.data[symbol].buffer);
 }
 
+// Aborts the current fiber with an appropriate method not found error for a
+// method with [symbol] on [classObj].
+static void classNotFound(WrenVM* vm)
+{
+  vm->fiber->error = wrenStringFormat(vm, "Unknown class", "");
+}
+
 // Checks that [value], which must be a closure, does not require more
 // parameters than are provided by [numArgs].
 //
@@ -947,6 +954,10 @@ static WrenInterpretResult runInterpreter(WrenVM* vm, register ObjFiber* fiber)
       goto completeCall;
 
     completeCall:
+      if( !classObj ) {
+        classNotFound(vm);
+        RUNTIME_ERROR();
+      }
       // If the class's method table doesn't include the symbol, bail.
       if (symbol >= classObj->methods.count ||
           (method = &classObj->methods.data[symbol])->type == METHOD_NONE)
