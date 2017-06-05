@@ -57,6 +57,7 @@ struct WrenVM
   // that were allocated since then. Does *not* include bytes for objects that
   // were freed since the last GC.
   size_t bytesAllocated;
+  char*  memory;
 
   // The number of total allocated bytes that will trigger the next GC.
   size_t nextGC;

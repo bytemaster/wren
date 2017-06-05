@@ -216,6 +216,9 @@ typedef struct
   int64_t maxHeapSize;
 #endif
 
+  char*  memory;
+  size_t memory_size;
+
 } WrenConfiguration;
 
 typedef enum

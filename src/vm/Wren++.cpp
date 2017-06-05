@@ -256,7 +256,7 @@ int VM::heapGrowthPercent = 50;
 
 std::size_t VM::chunkSize = 0x500000u;
 
-VM::VM()
+VM::VM( char* memory, size_t size )
     : vm_{ nullptr } {
     setState_();
 
@@ -271,6 +271,8 @@ VM::VM()
     configuration.bindForeignClassFn = foreignClassProvider;
     configuration.writeFn = writeFnWrapper;
     configuration.errorFn = errorFnWrapper;
+    configuration.memory = memory;
+    configuration.memory_size = size;
     vm_ = wrenNewVM( &configuration );
 }
 

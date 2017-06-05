@@ -495,6 +495,14 @@ decltype( auto ) invokeHelper( WrenVM* vm, R( C::*f )( Args... ), std::index_seq
     return (obj->*f)( WrenSlotAPI< typename Traits::template ArgumentType<index> >::get( vm, index + 1 )... );
 }
 
+template< typename R, typename C, typename... Args, std::size_t... index >
+decltype( auto ) invokeHelper( WrenVM* vm, R( C::*f )( WrenVM&, Args... ), std::index_sequence< index... > ) {
+    using Traits = FunctionTraits< decltype(f) >;
+    ForeignObject* objWrapper = static_cast<ForeignObject*>(wrenGetSlotForeign(vm, 0));
+    auto obj = objWrapper->ptr<C>();
+    return (obj->*f)( *vm, WrenSlotAPI< typename Traits::template ArgumentType<index> >::get( vm, index + 1 )... );
+}
+
 // const variant
 template< typename R, typename C, typename... Args, std::size_t... index >
 decltype( auto ) invokeHelper( WrenVM* vm, R( C::*f )( Args... ) const, std::index_sequence< index... > ) {
@@ -505,9 +513,23 @@ decltype( auto ) invokeHelper( WrenVM* vm, R( C::*f )( Args... ) const, std::ind
     return (obj->*f)( WrenSlotAPI< typename Traits::template ArgumentType<index> >::get( vm, index + 1 )... );
 }
 
+template< typename R, typename C, typename... Args, std::size_t... index >
+decltype( auto ) invokeHelper( WrenVM* vm, R( C::*f )( WrenVM&, Args... ) const, std::index_sequence< index... > ) {
+    using Traits = FunctionTraits< decltype(f) >;
+    ForeignObject* objWrapper = static_cast<ForeignObject*>(wrenGetSlotForeign(vm, 0));
+    //const C* obj = static_cast<const C*>(objWrapper->objectPtr());
+    auto obj = objWrapper->ptr<C>();
+    return (obj->*f)( *vm, WrenSlotAPI< typename Traits::template ArgumentType<index> >::get( vm, index + 1 )... );
+}
+
 template< typename R, typename C, typename... Args >
 decltype( auto ) invokeWithWrenArguments( WrenVM* vm, R( C::*f )( Args... ) ) {
     constexpr auto Arity = FunctionTraits< decltype(f) >::Arity;
+    return invokeHelper( vm, f, std::make_index_sequence<Arity>{} );
+}
+template< typename R, typename C, typename... Args >
+decltype( auto ) invokeWithWrenArguments( WrenVM* vm, R( C::*f )( WrenVM&, Args... ) ) {
+    constexpr auto Arity = FunctionTraits< decltype(f) >::Arity - 1;
     return invokeHelper( vm, f, std::make_index_sequence<Arity>{} );
 }
 
@@ -515,6 +537,11 @@ decltype( auto ) invokeWithWrenArguments( WrenVM* vm, R( C::*f )( Args... ) ) {
 template< typename R, typename C, typename... Args >
 decltype( auto ) invokeWithWrenArguments( WrenVM* vm, R( C::*f )( Args... ) const ) {
     constexpr auto Arity = FunctionTraits< decltype(f) >::Arity;
+    return invokeHelper( vm, f, std::make_index_sequence<Arity>{} );
+}
+template< typename R, typename C, typename... Args >
+decltype( auto ) invokeWithWrenArguments( WrenVM* vm, R( C::*f )( WrenVM&, Args... ) const ) {
+    constexpr auto Arity = FunctionTraits< decltype(f) >::Arity - 1;
     return invokeHelper( vm, f, std::make_index_sequence<Arity>{} );
 }
 
@@ -811,7 +838,7 @@ enum class Result {
 class VM {
 
     public:
-        VM();
+        VM( char* memory = nullptr, size_t size = 0 );
         VM( const VM& )             = delete;
         VM(VM&& );
         VM& operator=( const VM& )  = delete;
